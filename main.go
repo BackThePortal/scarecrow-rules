@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
@@ -29,16 +30,17 @@ func getClient(config *oauth2.Config) *http.Client {
 // Requests a token from the web, then returns the retrieved token.
 func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOnline)
-	fmt.Printf("Go to the following link in your browser then type the "+
-		"authorization code: \n%v\n", authURL)
+	fmt.Printf("M\n%v\n", authURL)
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
+		fmt.Println("E")
 		log.Fatalf("Unable to read authorization code: %v", err)
 	}
 
 	tok, err := config.Exchange(oauth2.NoContext, authCode)
 	if err != nil {
+		fmt.Println("E")
 		log.Fatalf("Unable to retrieve token from web: %v", err)
 	}
 	return tok
@@ -112,34 +114,50 @@ func readStructuralElements(elements []*docs.StructuralElement) string {
 }
 
 func main() {
+	docId := flag.String("doc", "", "id of the document")
+
 	envErr := godotenv.Load()
 	if envErr != nil {
+		fmt.Println("E")
 		log.Fatal("Error loading .env file")
+		return
 	}
 
 	ctx := context.Background()
 	b, err := os.ReadFile("credentials.json")
 	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
+		log.Fatalf("E\nUnable to read client secret file: %v", err)
+		return
+
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/documents.readonly")
 	if err != nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
+		log.Fatalf("E\nUnable to parse client secret file to config: %v", err)
+		return
 	}
 	client := getClient(config)
 
 	srv, err := docs.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		log.Fatalf("Unable to retrieve Docs client: %v", err)
+		log.Fatalf("E\nUnable to retrieve Docs client: %v", err)
+		return
 	}
 
-	docId := os.Getenv("DOCUMENT_ID")
-	doc, err := srv.Documents.Get(docId).Do()
+	flag.Parse()
+	if *docId == "" {
+		fmt.Println("E")
+		fmt.Println("Missing doc id")
+	}
+
+	//docId := os.Getenv("DOCUMENT_ID")
+	doc, err := srv.Documents.Get(*docId).Do()
 	if err != nil {
-		log.Fatalf("Unable to retrieve data from document: %v", err)
+		log.Fatalf("E\nUnable to retrieve data from document: %v", err)
+		return
 	}
 	body := readStructuralElements(doc.Body.Content)
+	fmt.Println("S")
 	fmt.Printf(body)
 }
