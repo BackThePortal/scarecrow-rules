@@ -34,13 +34,11 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
-		fmt.Println("E")
 		log.Fatalf("Unable to read authorization code: %v", err)
 	}
 
 	tok, err := config.Exchange(oauth2.NoContext, authCode)
 	if err != nil {
-		fmt.Println("E")
 		log.Fatalf("Unable to retrieve token from web: %v", err)
 	}
 	return tok
@@ -118,37 +116,33 @@ func main() {
 
 	envErr := godotenv.Load()
 	if envErr != nil {
-		fmt.Println("E")
 		log.Fatal("Error loading .env file")
-		return
 	}
 
 	ctx := context.Background()
 	b, err := os.ReadFile("credentials.json")
 	if err != nil {
-		log.Fatalf("E\nUnable to read client secret file: %v", err)
-		return
+		log.Fatalf("Unable to read client secret file: %v", err)
 
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/documents.readonly")
 	if err != nil {
-		log.Fatalf("E\nUnable to parse client secret file to config: %v", err)
-		return
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+
 	}
 	client := getClient(config)
 
 	srv, err := docs.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		log.Fatalf("E\nUnable to retrieve Docs client: %v", err)
-		return
+		log.Fatalf("Unable to retrieve Docs client: %v", err)
+
 	}
 
 	flag.Parse()
 	if *docId == "" {
-		fmt.Println("E")
-		fmt.Println("Missing doc id")
+		os.Exit(0)
 	}
 
 	//docId := os.Getenv("DOCUMENT_ID")
@@ -158,6 +152,6 @@ func main() {
 		return
 	}
 	body := readStructuralElements(doc.Body.Content)
-	fmt.Println("S")
 	fmt.Printf(body)
+	os.Exit(0)
 }
