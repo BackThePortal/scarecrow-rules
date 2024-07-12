@@ -1,6 +1,6 @@
 module scarecrow-rules
 
-go 1.22
+go 1.22.0
 
 require (
 	cloud.google.com/go/auth v0.5.1 // indirect

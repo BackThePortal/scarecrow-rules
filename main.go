@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/docs/v1"
@@ -17,12 +16,18 @@ import (
 )
 
 // Retrieves a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config) *http.Client {
+func getClient(config *oauth2.Config, interact bool) *http.Client {
 	tokFile := "token.json"
 	tok, err := tokenFromFile(tokFile)
 	if err != nil {
-		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
+		if interact {
+			tok = getTokenFromWeb(config)
+			saveToken(tokFile, tok)
+		} else {
+			log.Println("No token found. Manual action required.")
+			os.Exit(3)
+		}
+
 	}
 	return config.Client(context.Background(), tok)
 }
@@ -63,6 +68,7 @@ func saveToken(path string, token *oauth2.Token) {
 	defer f.Close()
 	if err != nil {
 		log.Fatalf("Unable to cache OAuth token: %v", err)
+
 	}
 	json.NewEncoder(f).Encode(token)
 }
@@ -112,35 +118,36 @@ func readStructuralElements(elements []*docs.StructuralElement) string {
 }
 
 func main() {
+	log.Print("aa")
 	docId := flag.String("doc", "", "id of the document")
-
-	envErr := godotenv.Load()
-	if envErr != nil {
-		log.Fatal("Error loading .env file")
-	}
+	interact := flag.Bool("interact", true, "enable user interaction")
+	testOnly := flag.Bool("test-only", false, "don't retrieve document content, just check that it's readable")
+	flag.Parse()
 
 	ctx := context.Background()
 	b, err := os.ReadFile("credentials.json")
 	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
+		log.Printf("Unable to read client secret file: %v", err)
+		os.Exit(2)
 
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/documents.readonly")
 	if err != nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
+		log.Printf("Unable to parse client secret file to config: %v", err)
+		os.Exit(1)
 
 	}
-	client := getClient(config)
+	client := getClient(config, *interact)
 
 	srv, err := docs.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		log.Fatalf("Unable to retrieve Docs client: %v", err)
+		log.Printf("Unable to retrieve Docs client: %v", err)
+		os.Exit(4)
 
 	}
 
-	flag.Parse()
 	if *docId == "" {
 		os.Exit(0)
 	}
@@ -148,10 +155,13 @@ func main() {
 	//docId := os.Getenv("DOCUMENT_ID")
 	doc, err := srv.Documents.Get(*docId).Do()
 	if err != nil {
-		log.Fatalf("E\nUnable to retrieve data from document: %v", err)
+		log.Printf("Unable to retrieve data from document: %v", err)
+		os.Exit(5)
 		return
 	}
-	body := readStructuralElements(doc.Body.Content)
-	fmt.Printf(body)
+	if !*testOnly {
+		body := readStructuralElements(doc.Body.Content)
+		fmt.Printf(body)
+	}
 	os.Exit(0)
 }

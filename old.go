@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func main() {
+func _main() {
 	envErr := godotenv.Load()
 	if envErr != nil {
 		log.Fatal("Error loading .env file")
