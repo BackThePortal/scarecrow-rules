@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/kardianos/osext"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/docs/v1"
@@ -16,8 +17,8 @@ import (
 )
 
 // Retrieves a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config, interact bool) *http.Client {
-	tokFile := "token.json"
+func getClient(config *oauth2.Config, interact bool, folderPath string) *http.Client {
+	tokFile := folderPath + "/token.json"
 	tok, err := tokenFromFile(tokFile)
 	if err != nil {
 		if interact {
@@ -118,14 +119,18 @@ func readStructuralElements(elements []*docs.StructuralElement) string {
 }
 
 func main() {
-	log.Print("aa")
+	folderPath, err := osext.ExecutableFolder()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	docId := flag.String("doc", "", "id of the document")
 	interact := flag.Bool("interact", true, "enable user interaction")
 	testOnly := flag.Bool("test-only", false, "don't retrieve document content, just check that it's readable")
 	flag.Parse()
 
 	ctx := context.Background()
-	b, err := os.ReadFile("credentials.json")
+	b, err := os.ReadFile(folderPath + "/credentials.json")
 	if err != nil {
 		log.Printf("Unable to read client secret file: %v", err)
 		os.Exit(2)
@@ -139,7 +144,7 @@ func main() {
 		os.Exit(1)
 
 	}
-	client := getClient(config, *interact)
+	client := getClient(config, *interact, folderPath)
 
 	srv, err := docs.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
